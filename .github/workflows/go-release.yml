@@ -1,0 +1,40 @@
+name: go-release
+
+# Go modules don't need an upload step: pushing a tag matching the module's
+# subdirectory convention (go/vX.Y.Z) is the release -- the Go module proxy
+# and `go get` resolve it directly from this tag. This workflow only
+# verifies the tagged commit actually builds and tests clean before anyone
+# depends on it, and drafts a GitHub Release with the CHANGELOG entry.
+on:
+  push:
+    tags:
+      - "go/v*.*.*"
+
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
+
+      - name: extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#go/v}" >> "$GITHUB_ENV"
+
+      - name: extract CHANGELOG section for this version
+        run: |
+          awk "/^## \[${VERSION}\]/{flag=1; next} /^## \[/{flag=0} flag" CHANGELOG.md > /tmp/release-notes.md
+
+      - name: create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: /tmp/release-notes.md

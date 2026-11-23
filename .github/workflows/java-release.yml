@@ -1,0 +1,65 @@
+name: java-release
+
+on:
+  push:
+    tags:
+      - "java/v*.*.*"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: assert pom.xml version matches tag
+        run: |
+          version="${GITHUB_REF_NAME#java/v}"
+          pom_version=$(mvn -f java/obs-instrumentation-spring-boot-starter/pom.xml -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive org.codehaus.mojo:exec-maven-plugin:3.1.0:exec)
+          if [ "$version" != "$pom_version" ]; then
+            echo "::error::tag java/v$version does not match pom.xml version $pom_version"
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+          server-id: ossrh
+          server-username: OSSRH_USERNAME
+          server-password: OSSRH_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: build + test
+        working-directory: java
+        run: mvn -B -pl obs-instrumentation-spring-boot-starter -am test
+
+      - name: deploy to Maven Central (OSSRH)
+        working-directory: java/obs-instrumentation-spring-boot-starter
+        run: mvn -B deploy -DskipTests -P release
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: mirror to GitHub Packages
+        working-directory: java/obs-instrumentation-spring-boot-starter
+        run: |
+          mvn -B deploy -DskipTests \
+            -DaltDeploymentRepository=github::default::https://maven.pkg.github.com/ardamoustafa1/obs-instrumentation-sdk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: extract CHANGELOG section for this version
+        run: |
+          version="${GITHUB_REF_NAME#java/v}"
+          awk "/^## \[${version}\]/{flag=1; next} /^## \[/{flag=0} flag" \
+            java/obs-instrumentation-spring-boot-starter/CHANGELOG.md > /tmp/release-notes.md
+
+      - name: create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: /tmp/release-notes.md

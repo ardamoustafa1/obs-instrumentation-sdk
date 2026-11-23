@@ -1,0 +1,81 @@
+name: ci
+
+# Runs on every push/PR, for all three languages -- independent jobs so a
+# Node change doesn't wait on (or get blocked by) Java, etc. Path filters
+# keep each job from re-running on changes that can't affect it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.modified, 'go/')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...
+
+  node:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: node
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm test
+      - name: quickstart smoke test
+        run: |
+          cd quickstart
+          npm install
+          node server.js &
+          sleep 1
+          curl -sf localhost:8080/hello/ci
+          curl -sf localhost:8080/metrics | grep -q http_server_requests_total
+
+  java:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: build + test starter, then build quickstart against it
+        working-directory: java
+        run: mvn -B -pl obs-instrumentation-spring-boot-starter,quickstart -am install
+
+  contract-drift-check:
+    # See ../README.md's versioning policy: all three languages must agree
+    # on CONTRACT.md's version. This is a cheap, deliberately naive check
+    # (does each package's naming test reference the same contract
+    # version string) rather than parsing three different test frameworks'
+    # output into one schema.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: extract contract version
+        run: |
+          version=$(grep -m1 '^contract:' CONTRACT.md | awk '{print $2}')
+          echo "CONTRACT_VERSION=$version" >> "$GITHUB_ENV"
+      - name: each package's CHANGELOG must mention the current contract version
+        run: |
+          for f in go/CHANGELOG.md node/CHANGELOG.md java/obs-instrumentation-spring-boot-starter/CHANGELOG.md; do
+            grep -q "contract v${CONTRACT_VERSION}" "$f" || {
+              echo "::error file=$f::missing a '[contract v${CONTRACT_VERSION}]' entry"
+              exit 1
+            }
+          done

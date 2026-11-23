@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>com.acme.obs</groupId>
+  <artifactId>obs-instrumentation-sdk-java-reactor</artifactId>
+  <version>1.0.0</version>
+  <packaging>pom</packaging>
+
+  <!--
+    Aggregator only, never itself published: lets
+    `mvn -f java/pom.xml install` build the starter and then the quickstart
+    against it in one pass, mirroring how a real multi-module checkout
+    (or this monorepo's CI) proves the quickstart integrates against the
+    starter's current source, not last release's jar.
+  -->
+  <modules>
+    <module>obs-instrumentation-spring-boot-starter</module>
+    <module>quickstart</module>
+  </modules>
+</project>

@@ -1,0 +1,13 @@
+{
+  "name": "obs-instrumentation-quickstart",
+  "private": true,
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@acme/obs-instrumentation": "file:..",
+    "express": "^4.19.2"
+  }
+}

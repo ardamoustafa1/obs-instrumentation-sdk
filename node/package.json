@@ -1,0 +1,43 @@
+{
+  "name": "@acme/obs-instrumentation",
+  "version": "1.0.0",
+  "description": "Golden-signal HTTP/worker instrumentation for Node.js, exporting OpenTelemetry/Prometheus-compliant metrics per obs-instrumentation-sdk's naming contract.",
+  "license": "Apache-2.0",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.222.0",
+    "@opentelemetry/exporter-prometheus": "^0.222.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-metrics": "^2.11.0",
+    "fastify-plugin": "^6.0.0"
+  },
+  "peerDependencies": {
+    "express": ">=4",
+    "fastify": ">=4"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "fastify": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "express": "^5.2.1",
+    "fastify": "^5.12.5"
+  }
+}
